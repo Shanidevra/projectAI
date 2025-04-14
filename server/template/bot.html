@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rasa Chatbot UI</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #474040; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0;
+            flex-direction: column;
+        }
+        .chat-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #00a2ff;
+            color: white;
+            border: none;
+            padding: 15px 10px;
+            border-radius: 100%;
+            font-size: 16px;
+            cursor: pointer;
+            /* box-shadow: 2px 2px 5px 2px #ff2d2df9; */
+        }
+        .chat-container {
+            display: none; 
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 350px;
+            background: rgb(255, 250, 250);
+            box-shadow: 0px 4px 10px rgb(234, 178, 178);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 1000;
+        }
+        .chat-header {
+            background: #00a2ff;
+            color: rgb(211, 23, 23);
+            padding: 10px;
+            text-align: center;
+            font-size: 30px;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            background: rgb(229, 64, 64);
+            border: none;
+            color: white;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 20px;
+        }
+        #chatbox {
+            height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #ffffff;
+            color: white;
+        }
+        .input-container {
+            display: flex;
+            border-top: 1px solid #052533;
+            padding: 10px;
+            background: #00a2ff;
+        }
+        #userInput {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 20px;
+            outline: none;
+            background: #d5cccc;
+        }
+        #sendBtn {
+            padding: 10px;
+            margin-left: 5px;
+            border: none;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #micBtn {
+            padding: 10px;
+            margin-left: 5px;
+            border: none;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #sendBtn {
+            background: #ff0000;
+        }
+        #micBtn {
+            background: #ff0000;
+        }
+        .user, .bot {
+            padding: 10px;
+            border-radius: 20px;
+            max-width: 75%;
+            word-wrap: break-word;
+            display: inline-block;
+        }
+        .user {
+            background: linear-gradient(45deg, #fd0303, #f59f9f);
+            color: rgb(0, 0, 0);
+            align-self: flex-end;
+        }
+        .bot {
+            background: linear-gradient(45deg, #00a1fe, #a9cdf1);
+            color: black;
+            align-self: flex-start;
+        }
+        .thinking {
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Chat Button -->
+    <button class="chat-btn" id="chatToggle">🤖</button>
+
+    <!-- Chat Popup -->
+    <div class="chat-container" id="chatContainer">
+        <div class="chat-header">
+            Rasa AI 🙂
+            <button class="close-btn" id="closeChat">✖</button>
+        </div>
+        <div id="chatbox"></div>
+        <div class="input-container">
+            <input type="text" id="userInput" placeholder="Type a message...">
+            <button id="sendBtn">➤</button>
+            <button id="micBtn">🎤</button>
+        </div>
+    </div>
+
+    <script>
+        // Toggle Chat Popup
+        document.getElementById("chatToggle").addEventListener("click", function() {
+            document.getElementById("chatContainer").style.display = "block";
+        });
+
+        // Close Chat Popup
+        document.getElementById("closeChat").addEventListener("click", function() {
+            document.getElementById("chatContainer").style.display = "none";
+        });
+
+        // Send message on Enter or Button Click
+        document.getElementById("sendBtn").addEventListener("click", sendMessage);
+        document.getElementById("userInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") sendMessage();
+        });
+
+        document.getElementById("micBtn").addEventListener("click", function() {
+            let recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = "en-US";
+            recognition.start();
+
+            recognition.onresult = function(event) {
+                let speechText = event.results[0][0].transcript;
+                document.getElementById("userInput").value = speechText;
+                sendMessage();
+            };
+
+            recognition.onerror = function(event) {
+                console.error("Speech recognition error:", event.error);
+            };
+
+            recognition.onspeechend = function() {
+                recognition.stop();
+            };
+        });
+
+
+        function sendMessage() {
+            let userMessage = document.getElementById("userInput").value;
+            if (!userMessage) return;
+
+            let chatbox = document.getElementById("chatbox");
+
+            // Create user message
+            let userDiv = document.createElement("div");
+            userDiv.className = "user";
+            userDiv.innerText = userMessage;
+            chatbox.appendChild(userDiv);
+
+            document.getElementById("userInput").value = "";
+            chatbox.scrollTop = chatbox.scrollHeight;
+
+            // Create thinking indicator
+            let thinkingIndicator = document.createElement("div");
+            thinkingIndicator.className = "bot thinking";
+            thinkingIndicator.innerText = "🤔";
+            chatbox.appendChild(thinkingIndicator);
+            chatbox.scrollTop = chatbox.scrollHeight;
+
+            fetch("http://localhost:5005/webhooks/rest/webhook", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sender: "user", message: userMessage })
+            })
+            .then(response => response.json())
+            .then(data => {
+                chatbox.removeChild(thinkingIndicator);
+                data.forEach(msg => {
+                    let botDiv = document.createElement("div");
+                    botDiv.className = "bot";
+                    botDiv.innerText = msg.text;
+                    botDiv.innerHTML = msg.text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+                    chatbox.appendChild(botDiv);
+                    speak(msg.text);
+                });
+
+
+
+                chatbox.scrollTop = chatbox.scrollHeight;
+            })
+            .catch(error => console.error("Error:", error));
+        }
+
+        function speak(text) {
+            let speech = new SpeechSynthesisUtterance();
+            speech.text = text;
+            speech.lang = "en-US";
+            window.speechSynthesis.speak(speech);
+        }
+    </script>
+
+</body>
+</html>

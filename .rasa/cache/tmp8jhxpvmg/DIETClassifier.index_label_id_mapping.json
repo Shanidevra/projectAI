@@ -1,0 +1,12 @@
+{
+  "0": "affirm",
+  "1": "ask_faq",
+  "2": "bot_challenge",
+  "3": "deny",
+  "4": "faq",
+  "5": "goodbye",
+  "6": "greet",
+  "7": "mood_great",
+  "8": "mood_unhappy",
+  "9": "web_read"
+}
